@@ -17,7 +17,30 @@
 
 ---
 
-## 📑 Навигация
+## 📥 Скачать
+
+Готовый zip-архив для локальной установки в закрытом контуре — на странице релизов:
+
+👉 **[Releases · Dchamel/video_maker_no_ai](https://github.com/Dchamel/video_maker_no_ai/releases)**
+
+> Архив `video_maker_no_ai_v1.0.zip` содержит исходники, config, точки входа, requirements и LICENSE — строго необходимый набор для оффлайн-установки.
+
+### Создание нового релиза
+
+Релизы собираются **автоматически** через GitHub Actions при пуше тега `v*`:
+
+```bash
+git tag v1.1
+git push origin v1.1
+```
+
+GitHub сам соберёт zip (`python make_release.py`) и опубликует релиз с прикреплённым архивом. Ничего вручную прикреплять не нужно.
+
+Собрать zip локально (без релиза): `python make_release.py` → `dist/video_maker_no_ai_v1.0.zip`.
+
+---
+
+##  Навигация
 
 | Раздел | Что внутри |
 |--------|-----------|
