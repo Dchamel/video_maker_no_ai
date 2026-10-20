@@ -1,0 +1,4 @@
+moviepy==2.2.1
+Pillow>=11.0.0
+numpy>=2.2.0
+imageio-ffmpeg==0.6.0
