@@ -22,6 +22,7 @@ INCLUDE_FILES = [
     "notebook.ipynb",
     "requirements.txt",
     "README.md",
+    "LICENSE",
     "make_release.py",
 ]
 INCLUDE_DIRS = ["src", "config"]
