@@ -12,7 +12,7 @@ from __future__ import annotations
 import zipfile
 from pathlib import Path
 
-VERSION = "1.2"
+VERSION = "1.3"
 ROOT = Path(".")
 DIST = ROOT / "dist"
 

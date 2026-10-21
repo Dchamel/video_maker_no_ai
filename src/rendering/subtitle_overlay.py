@@ -1,8 +1,9 @@
 """Отрисовка субтитра поверх кадра через Pillow.
 
-Отступы задаются в процентах от размеров кадра — масштабируются
-под разрешение автоматически. Длинные фразы переносятся по словам
-(word-wrap) до max_lines, гарантированно не выходя за границы.
+Отступы в процентах от кадра — масштабируются под разрешение.
+Длинные фразы переносятся по словам (word-wrap) до max_lines.
+Подложка облегает текст по фактической ширине строк (не на всю ширину).
+Прозрачность подложки и обводка текста настраиваются отдельно.
 Шрифт масштабируется под разрешение (база — 1080p).
 """
 from __future__ import annotations
@@ -15,7 +16,6 @@ from PIL import Image, ImageDraw, ImageFont
 from config.default_config import SubtitleConfig
 from src.models import SubtitlePhrase
 
-# Базовое разрешение, для которого задан font_size в конфиге.
 _BASE_HEIGHT = 1080
 
 
@@ -34,9 +34,10 @@ def draw_subtitle(
     """Накладывает текст субтитра на кадр (numpy RGB) и возвращает новый кадр."""
     if not text:
         return frame
-    img = Image.fromarray(frame).convert("RGBA")
-    draw = ImageDraw.Draw(img, "RGBA")
-    width, height = img.size
+    base = Image.fromarray(frame).convert("RGBA")
+    overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay, "RGBA")
+    width, height = base.size
 
     font = _load_font(config, height)
     max_w = _available_width(width, config)
@@ -44,20 +45,48 @@ def draw_subtitle(
 
     line_h = _line_height(draw, font)
     total_h = line_h * len(lines)
-    x, y = _compute_block_position(width, height, total_h, config)
+    block_w = max(draw.textlength(line, font=font) for line in lines)
+    x, y = _compute_block_position(width, height, total_h, block_w, config)
 
+    _draw_background(draw, x, y, block_w, total_h, config)
+    _draw_text_lines(draw, lines, x, y, line_h, block_w, font, config)
+    result = Image.alpha_composite(base, overlay)
+    return np.array(result.convert("RGB"))
+
+
+def _draw_background(
+    draw: ImageDraw.ImageDraw, x: int, y: int, w: float, h: int, config: SubtitleConfig
+) -> None:
+    """Полупрозрачная подложка под текстом по фактической ширине блока."""
+    if config.background_opacity <= 0:
+        return
+    alpha = int(255 * config.background_opacity / 100.0)
+    r, g, b = config.background_color
     pad = config.background_padding
-    draw.rectangle(
-        (x - pad, y - pad, x + max_w + pad, y + total_h + pad),
-        fill=config.background_color,
+    radius = min(pad * 2, int(h / 2), int(w / 2))
+    draw.rounded_rectangle(
+        (x - pad, y - pad, x + w + pad, y + h + pad),
+        radius=radius, fill=(r, g, b, alpha),
     )
+
+
+def _draw_text_lines(
+    draw: ImageDraw.ImageDraw, lines: list[str], x: int, y: int,
+    line_h: int, block_w: float, font, config: SubtitleConfig,
+) -> None:
+    """Рисует строки по центру блока с обводкой для читаемости."""
     for i, line in enumerate(lines):
         line_w = draw.textlength(line, font=font)
-        draw.text(
-            (x + (max_w - line_w) / 2, y + i * line_h),
-            line, font=font, fill=config.font_color,
-        )
-    return np.array(img.convert("RGB"))
+        cx = x + (block_w - line_w) / 2
+        cy = y + i * line_h
+        if config.stroke_width > 0:
+            sr, sg, sb = config.stroke_color
+            draw.text(
+                (cx, cy), line, font=font, fill=config.font_color,
+                stroke_width=config.stroke_width, stroke_fill=(sr, sg, sb),
+            )
+        else:
+            draw.text((cx, cy), line, font=font, fill=config.font_color)
 
 
 def _load_font(config: SubtitleConfig, height: int) -> ImageFont.ImageFont:
@@ -110,10 +139,10 @@ def _line_height(draw: ImageDraw.ImageDraw, font) -> int:
 
 
 def _compute_block_position(
-    width: int, height: int, total_h: int, config: SubtitleConfig
+    width: int, height: int, total_h: int, block_w: float, config: SubtitleConfig
 ) -> tuple[int, int]:
     """Координаты (x, y) левого верхнего угла блока текста."""
-    x = int(width * config.margin_left_pct / 100)
+    x = int((width - block_w) / 2)
     if config.position == "top":
         y = int(height * config.margin_top_pct / 100)
     elif config.position == "center":

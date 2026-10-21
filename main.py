@@ -50,6 +50,10 @@ def _add_subtitle_args(parser: argparse.ArgumentParser) -> None:
                         help="Отступ сверху, %% от высоты")
     parser.add_argument("--max-lines", type=int, default=None,
                         help="Макс. строк при переносе фразы")
+    parser.add_argument("--bg-opacity", type=float, default=None,
+                        help="Прозрачность фона субтитров, %% (0=нет фона, 100=непрозрачный)")
+    parser.add_argument("--stroke-width", type=int, default=None,
+                        help="Толщина обводки текста, px (0=без обводки)")
 
 
 def _add_audio_args(parser: argparse.ArgumentParser) -> None:
@@ -96,6 +100,10 @@ def _apply_subtitle_args(config: Config, args: argparse.Namespace) -> None:
         sub.margin_top_pct = args.margin_top
     if args.max_lines:
         sub.max_lines = args.max_lines
+    if args.bg_opacity is not None:
+        sub.background_opacity = args.bg_opacity
+    if args.stroke_width is not None:
+        sub.stroke_width = args.stroke_width
 
 
 def _apply_audio_args(config: Config, args: argparse.Namespace) -> None:
